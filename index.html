@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CODEC-XI</title>
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            mono: ['"IBM Plex Mono"', 'monospace'],
+            sans: ['Inter', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;700&family=Inter:wght@400;500;600&display=swap"
+    rel="stylesheet">
+
+  <!-- FFmpeg.wasm Local -->
+  <script src="js/lib/ffmpeg.js"></script>
+  <script src="js/lib/index.js"></script>
+
+  <style>
+    body {
+      background-color: #0c0c0c;
+      color: #f5f5f5;
+    }
+
+    /* Custom scrollbar for monochrome aesthetic */
+    ::-webkit-scrollbar {
+      width: 4px;
+      height: 4px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: #0c0c0c;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: #2a2a2a;
+    }
+  </style>
+</head>
+
+<body class="font-sans min-h-screen flex flex-col selection:bg-white selection:text-black">
+
+  <!-- FFmpeg Loading Banner -->
+  <div id="ffmpeg-loader"
+    class="bg-white text-black font-mono text-xs py-1.5 px-4 tracking-widest flex justify-between items-center transition-all duration-300">
+    <span>FFMPEG.WASM: INITIALIZING</span>
+    <span id="ffmpeg-status">0%</span>
+  </div>
+
+  <header
+    class="border-b border-[#2a2a2a] py-6 px-6 md:px-12 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+    <div>
+      <h1 class="font-mono text-xl tracking-widest font-bold text-white">CODEC-XI</h1>
+    </div>
+
+    <!-- Tab Navigation -->
+    <nav class="flex flex-wrap gap-0 font-mono text-xs tracking-widest w-full md:w-auto">
+      <button onclick="switchTab('image')" id="tab-image"
+        class="tab-btn px-4 py-2 border border-white bg-white text-black font-bold uppercase transition-all duration-200">IMAGE
+      </button>
+      <button onclick="switchTab('audio')" id="tab-audio"
+        class="tab-btn px-4 py-2 border border-[#2a2a2a] text-[#888888] hover:text-white uppercase transition-all duration-200">AUDIO
+      </button>
+      <button onclick="switchTab('video')" id="tab-video"
+        class="tab-btn px-4 py-2 border border-[#2a2a2a] text-[#888888] hover:text-white uppercase transition-all duration-200">VIDEO
+      </button>
+      <button onclick="switchTab('stego')" id="tab-stego"
+        class="tab-btn px-4 py-2 border border-[#2a2a2a] text-[#888888] hover:text-white uppercase transition-all duration-200">STEGANOGRAPHY
+      </button>
+    </nav>
+  </header>
+
+  <main class="flex-grow p-6 md:p-12 max-w-7xl mx-auto w-full">
+
+    <!-- 1. IMAGE TAB (Huffman Compression & Decompression) -->
+    <section id="content-image" class="tab-content grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <!-- Compress Panel -->
+      <div class="bg-[#161616] border border-[#2a2a2a] rounded-none p-6 flex flex-col justify-between">
+        <div>
+          <span class="font-mono text-xs text-[#888888] tracking-widest block mb-2">PROCESS_01</span>
+          <h2
+            class="font-mono text-lg tracking-wider text-white font-medium border-b border-[#2a2a2a] pb-3 mb-6 uppercase">
+            Huffman Image Compression</h2>
+
+          <div class="mb-6">
+            <label class="font-mono text-xs tracking-wider text-[#888888] block mb-2 uppercase">Select Input Image
+              (PNG/JPG)</label>
+            <input type="file" id="huff-input-img" accept="image/*"
+              class="w-full bg-[#0c0c0c] border border-[#2a2a2a] text-sm p-3 font-mono focus:outline-none focus:border-white text-[#f5f5f5]">
+          </div>
+
+          <!-- Preview & Info -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+            <div id="huff-orig-preview-container"
+              class="hidden border border-[#2a2a2a] p-2 flex flex-col items-center bg-[#0c0c0c]">
+              <span class="font-mono text-[10px] text-[#888888] mb-2 uppercase">Original Preview</span>
+              <img id="huff-orig-preview" class="max-h-48 object-contain">
+            </div>
+            <div id="huff-stats-container"
+              class="hidden border border-[#2a2a2a] p-4 bg-[#0c0c0c] flex flex-col justify-center">
+              <span class="font-mono text-xs text-[#888888] uppercase block mb-3">Compression Statistics</span>
+              <div class="space-y-2 text-xs font-mono">
+                <div class="flex justify-between"><span>Original Size:</span><span id="huff-orig-size">-</span></div>
+                <div class="flex justify-between"><span>Compressed Size:</span><span id="huff-comp-size">-</span></div>
+                <div class="flex justify-between"><span>Ratio:</span><span id="huff-ratio">-</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <button id="btn-huff-compress" disabled
+            class="w-full bg-[#2a2a2a] text-[#888888] font-mono text-xs tracking-widest py-3 uppercase transition-all duration-200 font-bold hover:bg-white hover:text-black disabled:opacity-50 disabled:hover:bg-[#2a2a2a] disabled:hover:text-[#888888]">Compress
+            Image</button>
+          <a id="btn-huff-download-comp"
+            class="hidden w-full bg-white text-black font-mono text-xs tracking-widest py-3 uppercase text-center font-bold mt-3 block">Download
+            .huff File</a>
+        </div>
+      </div>
+
+      <!-- Decompress Panel -->
+      <div class="bg-[#161616] border border-[#2a2a2a] rounded-none p-6 flex flex-col justify-between">
+        <div>
+          <span class="font-mono text-xs text-[#888888] tracking-widest block mb-2">PROCESS_02</span>
+          <h2
+            class="font-mono text-lg tracking-wider text-white font-medium border-b border-[#2a2a2a] pb-3 mb-6 uppercase">
+            Huffman Image Decompression</h2>
+
+          <div class="mb-6">
+            <label class="font-mono text-xs tracking-wider text-[#888888] block mb-2 uppercase">Select Compressed File
+              (.huff)</label>
+            <input type="file" id="huff-input-file" accept=".huff"
+              class="w-full bg-[#0c0c0c] border border-[#2a2a2a] text-sm p-3 font-mono focus:outline-none focus:border-white text-[#f5f5f5]">
+          </div>
+
+          <!-- Decoded Preview -->
+          <div id="huff-decomp-container"
+            class="hidden border border-[#2a2a2a] p-2 flex flex-col items-center bg-[#0c0c0c] mb-6">
+            <span class="font-mono text-[10px] text-[#888888] mb-2 uppercase">Decompressed Output</span>
+            <img id="huff-decomp-preview" class="max-h-48 object-contain">
+          </div>
+        </div>
+
+        <div>
+          <button id="btn-huff-decompress" disabled
+            class="w-full bg-[#2a2a2a] text-[#888888] font-mono text-xs tracking-widest py-3 uppercase transition-all duration-200 font-bold hover:bg-white hover:text-black disabled:opacity-50 disabled:hover:bg-[#2a2a2a] disabled:hover:text-[#888888]">Decompress
+            File</button>
+          <a id="btn-huff-download-decomp"
+            class="hidden w-full bg-white text-black font-mono text-xs tracking-widest py-3 uppercase text-center font-bold mt-3 block">Download
+            Restored Image</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. AUDIO TAB (Audio Compression via FFmpeg.wasm) -->
+    <section id="content-audio" class="tab-content hidden max-w-2xl mx-auto">
+      <div class="bg-[#161616] border border-[#2a2a2a] rounded-none p-6 flex flex-col justify-between">
+        <div>
+          <span class="font-mono text-xs text-[#888888] tracking-widest block mb-2">PROCESS_03</span>
+          <h2
+            class="font-mono text-lg tracking-wider text-white font-medium border-b border-[#2a2a2a] pb-3 mb-6 uppercase">
+            Audio Compression</h2>
+
+          <div class="mb-6">
+            <label class="font-mono text-xs tracking-wider text-[#888888] block mb-2 uppercase">Select Audio File
+              (WAV/MP3)</label>
+            <input type="file" id="audio-input-file" accept="audio/wav, audio/mp3, audio/mpeg"
+              class="w-full bg-[#0c0c0c] border border-[#2a2a2a] text-sm p-3 font-mono focus:outline-none focus:border-white text-[#f5f5f5]">
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-6">
+            <div>
+              <label class="font-mono text-xs tracking-wider text-[#888888] block mb-2 uppercase">Target Format &
+                Bitrate</label>
+              <div class="w-full bg-[#0c0c0c] border border-[#2a2a2a] text-sm p-3 font-mono text-white">
+                output_64k.aac
+              </div>
+              <input type="hidden" id="audio-bitrate" value="64k">
+            </div>
+
+            <div id="audio-stats-container"
+              class="hidden border border-[#2a2a2a] p-4 bg-[#0c0c0c] flex flex-col justify-center">
+              <div class="space-y-2 text-xs font-mono">
+                <div class="flex justify-between"><span>Original Size:</span><span id="audio-orig-size">-</span></div>
+                <div class="flex justify-between"><span>Compressed Size:</span><span id="audio-comp-size">-</span></div>
+                <div class="flex justify-between"><span>Ratio:</span><span id="audio-ratio">-</span></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Log console for FFmpeg output -->
+          <div class="mb-6">
+            <span class="font-mono text-[10px] text-[#888888] block mb-1 uppercase">FFmpeg Console Logs</span>
+            <div id="audio-logs"
+              class="h-24 bg-[#0c0c0c] border border-[#2a2a2a] p-2 font-mono text-[10px] text-[#888888] overflow-y-auto whitespace-pre-wrap">
+              Console ready...</div>
+          </div>
+        </div>
+
+        <div>
+          <button id="btn-audio-compress" disabled
+            class="w-full bg-[#2a2a2a] text-[#888888] font-mono text-xs tracking-widest py-3 uppercase transition-all duration-200 font-bold hover:bg-white hover:text-black disabled:opacity-50 disabled:hover:bg-[#2a2a2a] disabled:hover:text-[#888888]">Compress
+            Audio</button>
+          <a id="btn-audio-download"
+            class="hidden w-full bg-white text-black font-mono text-xs tracking-widest py-3 uppercase text-center font-bold mt-3 block">Download
+            Compressed Audio</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. VIDEO TAB (Video Compression via FFmpeg.wasm) -->
+    <section id="content-video" class="tab-content hidden max-w-2xl mx-auto">
+      <div class="bg-[#161616] border border-[#2a2a2a] rounded-none p-6 flex flex-col justify-between">
+        <div>
+          <span class="font-mono text-xs text-[#888888] tracking-widest block mb-2">PROCESS_04</span>
+          <h2
+            class="font-mono text-lg tracking-wider text-white font-medium border-b border-[#2a2a2a] pb-3 mb-6 uppercase">
+            Video Compression</h2>
+
+          <div class="mb-6">
+            <label class="font-mono text-xs tracking-wider text-[#888888] block mb-2 uppercase">Select Video File
+              (MP4/WebM)</label>
+            <input type="file" id="video-input-file" accept="video/mp4, video/webm"
+              class="w-full bg-[#0c0c0c] border border-[#2a2a2a] text-sm p-3 font-mono focus:outline-none focus:border-white text-[#f5f5f5]">
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-6">
+            <div class="space-y-4">
+              <div>
+                <label class="font-mono text-xs tracking-wider text-[#888888] block mb-2 uppercase">Compression Setting
+                </label>
+                <div class="w-full bg-[#0c0c0c] border border-[#2a2a2a] text-sm p-3 font-mono text-white">
+                  720P (1280x720) / H.264 / MEDIUM PRESET
+                </div>
+                <input type="hidden" id="video-resolution" value="720">
+                <input type="hidden" id="video-preset" value="medium">
+              </div>
+            </div>
+
+            <div id="video-stats-container"
+              class="hidden border border-[#2a2a2a] p-4 bg-[#0c0c0c] flex flex-col justify-center">
+              <div class="space-y-2 text-xs font-mono">
+                <div class="flex justify-between"><span>Original Size:</span><span id="video-orig-size">-</span></div>
+                <div class="flex justify-between"><span>Compressed Size:</span><span id="video-comp-size">-</span></div>
+                <div class="flex justify-between"><span>Ratio:</span><span id="video-ratio">-</span></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Log console for FFmpeg output -->
+          <div class="mb-6">
+            <span class="font-mono text-[10px] text-[#888888] block mb-1 uppercase">FFmpeg Console Logs</span>
+            <div id="video-logs"
+              class="h-24 bg-[#0c0c0c] border border-[#2a2a2a] p-2 font-mono text-[10px] text-[#888888] overflow-y-auto whitespace-pre-wrap">
+              Console ready...</div>
+          </div>
+        </div>
+
+        <div>
+          <button id="btn-video-compress" disabled
+            class="w-full bg-[#2a2a2a] text-[#888888] font-mono text-xs tracking-widest py-3 uppercase transition-all duration-200 font-bold hover:bg-white hover:text-black disabled:opacity-50 disabled:hover:bg-[#2a2a2a] disabled:hover:text-[#888888]">Compress
+            Video</button>
+          <a id="btn-video-download"
+            class="hidden w-full bg-white text-black font-mono text-xs tracking-widest py-3 uppercase text-center font-bold mt-3 block">Download
+            Compressed Video</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. STEGANOGRAPHY TAB (LSB) -->
+    <section id="content-stego" class="tab-content hidden grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <!-- Encode Panel -->
+      <div class="bg-[#161616] border border-[#2a2a2a] rounded-none p-6 flex flex-col justify-between">
+        <div>
+          <span class="font-mono text-xs text-[#888888] tracking-widest block mb-2">PROCESS_05</span>
+          <h2
+            class="font-mono text-lg tracking-wider text-white font-medium border-b border-[#2a2a2a] pb-3 mb-6 uppercase">
+            LSB Steganography - Encode</h2>
+
+          <div class="mb-4">
+            <label class="font-mono text-xs tracking-wider text-[#888888] block mb-2 uppercase">Select Cover Image (PNG
+              Preferred)</label>
+            <input type="file" id="stego-encode-img" accept="image/*"
+              class="w-full bg-[#0c0c0c] border border-[#2a2a2a] text-sm p-3 font-mono focus:outline-none focus:border-white text-[#f5f5f5]">
+          </div>
+
+          <!-- Stego Encode Preview -->
+          <div id="stego-encode-preview-container"
+            class="hidden border border-[#2a2a2a] p-2 flex flex-col items-center bg-[#0c0c0c] mb-4">
+            <span class="font-mono text-[10px] text-[#888888] mb-2 uppercase">Cover Image Preview</span>
+            <img id="stego-encode-preview" class="max-h-48 object-contain">
+          </div>
+
+          <div class="mb-6">
+            <label class="font-mono text-xs tracking-wider text-[#888888] block mb-2 uppercase">Secret Message</label>
+            <textarea id="stego-message" rows="4" placeholder="ENTER YOUR HIDDEN MESSAGE HERE..."
+              class="w-full bg-[#0c0c0c] border border-[#2a2a2a] text-sm p-3 font-mono focus:outline-none focus:border-white text-[#f5f5f5] resize-none uppercase"></textarea>
+          </div>
+
+          <!-- Capacity info -->
+          <div id="stego-capacity-info" class="hidden font-mono text-[10px] text-[#888888] mb-6">
+            CAPACITY: <span id="stego-capacity-used">0</span> / <span id="stego-capacity-total">0</span> CHARACTERS USED
+          </div>
+        </div>
+
+        <div>
+          <button id="btn-stego-encode" disabled
+            class="w-full bg-[#2a2a2a] text-[#888888] font-mono text-xs tracking-widest py-3 uppercase transition-all duration-200 font-bold hover:bg-white hover:text-black disabled:opacity-50 disabled:hover:bg-[#2a2a2a] disabled:hover:text-[#888888]">Encode
+            Message</button>
+          <a id="btn-stego-download"
+            class="hidden w-full bg-white text-black font-mono text-xs tracking-widest py-3 uppercase text-center font-bold mt-3 block">Download
+            Stego Image</a>
+        </div>
+      </div>
+
+      <!-- Decode Panel -->
+      <div class="bg-[#161616] border border-[#2a2a2a] rounded-none p-6 flex flex-col justify-between">
+        <div>
+          <span class="font-mono text-xs text-[#888888] tracking-widest block mb-2">PROCESS_06</span>
+          <h2
+            class="font-mono text-lg tracking-wider text-white font-medium border-b border-[#2a2a2a] pb-3 mb-6 uppercase">
+            LSB Steganography - Decode</h2>
+
+          <div class="mb-6">
+            <label class="font-mono text-xs tracking-wider text-[#888888] block mb-2 uppercase">Select Stego
+              Image</label>
+            <input type="file" id="stego-decode-img" accept="image/*"
+              class="w-full bg-[#0c0c0c] border border-[#2a2a2a] text-sm p-3 font-mono focus:outline-none focus:border-white text-[#f5f5f5]">
+          </div>
+
+          <!-- Stego Decode Preview -->
+          <div id="stego-decode-preview-container"
+            class="hidden border border-[#2a2a2a] p-2 flex flex-col items-center bg-[#0c0c0c] mb-6">
+            <span class="font-mono text-[10px] text-[#888888] mb-2 uppercase">Stego Image Preview</span>
+            <img id="stego-decode-preview" class="max-h-48 object-contain">
+          </div>
+
+          <div class="mb-6">
+            <label class="font-mono text-xs tracking-wider text-[#888888] block mb-2 uppercase">Decoded Message
+              Output</label>
+            <textarea id="stego-decoded-output" readonly rows="6" placeholder="DECODED MESSAGE WILL APPEAR HERE..."
+              class="w-full bg-[#0c0c0c] border border-[#2a2a2a] text-sm p-3 font-mono focus:outline-none text-[#f5f5f5] resize-none"></textarea>
+          </div>
+        </div>
+
+        <div>
+          <button id="btn-stego-decode" disabled
+            class="w-full bg-[#2a2a2a] text-[#888888] font-mono text-xs tracking-widest py-3 uppercase transition-all duration-200 font-bold hover:bg-white hover:text-black disabled:opacity-50 disabled:hover:bg-[#2a2a2a] disabled:hover:text-[#888888]">Decode
+            Image</button>
+        </div>
+      </div>
+    </section>
+
+  </main>
+  <!-- Scripts -->
+  <script src="js/main.js" defer></script>
+  <script src="js/huffman.js" defer></script>
+  <script src="js/audio.js" defer></script>
+  <script src="js/video.js" defer></script>
+  <script src="js/stego.js" defer></script>
+</body>
+
+</html>
